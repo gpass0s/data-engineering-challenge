@@ -90,6 +90,6 @@ variable "LOG_RETENTION_IN_DAYS" {
 }
 
 variable "LAMBDA_PERMISSION_ROLE_ARN" {
-  type  = string
+  type        = string
   description = "ARN for lambda role"
 }

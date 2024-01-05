@@ -47,10 +47,10 @@ module "lambda-layer" {
 }
 
 module "lambda-fetcher-permissions" {
-  source                             = "./modules/permissions/lambda-fetcher-service-role"
-  PROJECT_NAME                       = local.PROJECT_NAME
-  ENV                                = local.ENV
-  AWS_TAGS                           = local.AWS_TAGS
+  source       = "./modules/permissions/lambda-fetcher-service-role"
+  PROJECT_NAME = local.PROJECT_NAME
+  ENV          = local.ENV
+  AWS_TAGS     = local.AWS_TAGS
   SECRET_MANAGERS_ARN = [
     data.aws_secretsmanager_secret.socrata-api-key.arn,
   ]
@@ -73,18 +73,18 @@ module "lambda-fetcher" {
   }
   LAMBDA_PERMISSION_ROLE_ARN = module.lambda-fetcher-permissions.arn
   LAMBDA_ENVIRONMENT_VARIABLES = {
-    API_KEYS_SECRET_MANAGER_NAME  = data.aws_secretsmanager_secret.socrata-api-key.id
-    FIREHOSE_STREAM_NAME          = module.firehose-ingestion.stream_name
+    API_KEYS_SECRET_MANAGER_NAME = data.aws_secretsmanager_secret.socrata-api-key.id
+    FIREHOSE_STREAM_NAME         = module.firehose-ingestion.stream_name
   }
   CREATE_INVOKER_TRIGGER = false
-  AWS_TAGS = local.AWS_TAGS
+  AWS_TAGS               = local.AWS_TAGS
 }
 
 module "lambda-dbt-trigger-permissions" {
-  source                             = "./modules/permissions/lambda-dbt-trigger-service-role"
-  PROJECT_NAME                       = local.PROJECT_NAME
-  ENV                                = local.ENV
-  AWS_TAGS                           = local.AWS_TAGS
+  source       = "./modules/permissions/lambda-dbt-trigger-service-role"
+  PROJECT_NAME = local.PROJECT_NAME
+  ENV          = local.ENV
+  AWS_TAGS     = local.AWS_TAGS
   ROLES_TO_ASSUME_ARN = [
     module.ecs-task-definition.dbt-fargate-task-role-arn,
     module.ecs-task-definition.task-definition-role-arn
@@ -112,13 +112,13 @@ module "lambda-dbt-trigger" {
   }
   LAMBDA_PERMISSION_ROLE_ARN = module.lambda-dbt-trigger-permissions.arn
   LAMBDA_ENVIRONMENT_VARIABLES = {
-    ECS_CLUSTER_NAME              = module.ecs-cluster-for-dbt.cluster_name
-    ECS_TASK_DEFINITION_ARN       = module.ecs-task-definition.task-definition-arn
-    ECS_TASK_SUBNET_ID            = module.private_subnet_1a.id
-    ECS_SECURITY_GROUP_ID         = module.ecs-resources-security-group.id
-    SECRET_MANAGER_NAME           = data.aws_secretsmanager_secret.snowflake-dbt-credentials.id
-    CONTAINER_NAME                = module.ecs-task-definition.task-definition-container-name
-    ENVIRONMENT                   = local.ENV
+    ECS_CLUSTER_NAME        = module.ecs-cluster-for-dbt.cluster_name
+    ECS_TASK_DEFINITION_ARN = module.ecs-task-definition.task-definition-arn
+    ECS_TASK_SUBNET_ID      = module.private_subnet_1a.id
+    ECS_SECURITY_GROUP_ID   = module.ecs-resources-security-group.id
+    SECRET_MANAGER_NAME     = data.aws_secretsmanager_secret.snowflake-dbt-credentials.id
+    CONTAINER_NAME          = module.ecs-task-definition.task-definition-container-name
+    ENVIRONMENT             = local.ENV
   }
   CREATE_INVOKER_TRIGGER = true
   LAMBDA_EXECUTION_FREQUENCY = {
