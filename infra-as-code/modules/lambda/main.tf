@@ -2,15 +2,6 @@ locals {
   RESOURCE_NAME = "${var.PROJECT_NAME}-${var.ENV}-${var.RESOURCE_SUFFIX}"
 }
 
-module "permissions" {
-  source                   = "./permissions"
-  RESOURCE_NAME            = local.RESOURCE_NAME
-  ECS_TASK_DEFINITIONS_ARN = var.ECS_TASK_DEFINITIONS_ARN
-  ROLES_TO_ASSUME_ARN      = var.ROLES_TO_ASSUME_ARN
-  SECRET_MANAGERS_ARN      = var.SECRET_MANAGERS_ARN
-  FIREHOSE_ARN             = var.FIREHOSE_ARN
-}
-
 module "package" {
   source = "./package"
   PACKAGE_SETTINGS = {
@@ -67,7 +58,7 @@ resource "aws_lambda_function" "lambda" {
   layers           = var.LAMBDA_LAYER
   filename         = module.package.output_path
   source_code_hash = module.package.output_base64sha256
-  role             = module.permissions.role-arn
+  role             = var.LAMBDA_PERMISSION_ROLE_ARN
 
   vpc_config {
     subnet_ids         = var.VPC_SETTINGS["vpc_subnets"]

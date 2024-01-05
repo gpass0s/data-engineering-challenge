@@ -12,8 +12,3 @@ output "function_name" {
   value       = aws_lambda_function.lambda.function_name
   description = "function_name"
 }
-
-output "role-name" {
-  value       = module.permissions.role-name
-  description = "Name from AWS Lambda Role"
-}

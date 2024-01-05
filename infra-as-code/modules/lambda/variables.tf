@@ -89,22 +89,7 @@ variable "LOG_RETENTION_IN_DAYS" {
   default = 1
 }
 
-variable "ECS_TASK_DEFINITIONS_ARN" {
-  type    = list(string)
-  default = []
-}
-
-variable "ROLES_TO_ASSUME_ARN" {
-  type    = list(string)
-  default = []
-}
-
-variable "SECRET_MANAGERS_ARN" {
-  type    = list(string)
-  default = []
-}
-
-variable "FIREHOSE_ARN" {
-  type    = string
-  default = ""
+variable "LAMBDA_PERMISSION_ROLE_ARN" {
+  type  = string
+  description = "ARN for lambda role"
 }
