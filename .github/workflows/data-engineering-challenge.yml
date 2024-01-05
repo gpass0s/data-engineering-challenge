@@ -1,0 +1,146 @@
+name: "Github Actions Workflows for dbt and Terraform Deployment"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'data_engineering_challenge/**'
+      - 'infra-as-code/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'data_engineering_challenge/**'
+      - 'infra-as-code/**'
+
+jobs:
+
+  check-project-updates:
+    name: Check Project Updates
+    runs-on: ubuntu-latest
+    outputs:
+      infrastructure: ${{ steps.filter.outputs.infrastructure }}
+      dbt-project: ${{ steps.filter.outputs.dbt-project }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Filter Paths
+        uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            infrastructure:
+              - 'infra-as-code/**'
+            dbt-project:
+              - 'data_engineering_challenge/**'
+
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    needs: check-project-updates
+    if: needs.check-project-updates.outputs.infrastructure == 'true'
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_DEFAULT_OUTPUT: json
+      ENV: dev
+    outputs:
+      plan-status: ${{ env.PLAN_STATUS }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+
+      - name: Initialize Terraform
+        id: init
+        run: cd infra-as-code && terraform init --backend-config="bucket=gpassos-terraform-state-files"
+
+      - name: Validate Terraform
+        id: validate
+        run: |
+          cd infra-as-code 
+          terraform validate -no-color
+          terraform workspace select $ENV || terraform workspace new $ENV
+
+      - name: Terraform Plan
+        id: plan
+        run: cd infra-as-code && terraform plan -out plan.tfplan
+        continue-on-error: true
+
+      - name: Terraform Plan Status
+        if: steps.plan.outcome == 'failure'
+        run: |
+          echo "PLAN_STATUS=failure" >> "$GITHUB_ENV"
+          exit 1
+
+      - name: Set Terraform Plan Status
+        run: echo "PLAN_STATUS=success" >> "$GITHUB_ENV"
+
+  terraform-apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    needs:
+      - terraform-plan
+    if: needs.check-project-updates.outputs.infrastructure == 'true' && needs.terraform-plan.outputs.plan-status == 'success'
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_DEFAULT_OUTPUT: json
+      PLAN_STATUS: ${{ needs.terraform-plan.outputs.plan-status }}
+      ENV: dev
+    steps:
+      - name: Check Terraform Plan Status
+        if: env.PLAN_STATUS != 'success'
+        run: |
+          echo "The given Terraform plan is not valid"
+          exit 1
+
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Initialize Terraform
+        id: init
+        run: cd infra-as-code && terraform init --backend-config="bucket=gpassos-terraform-state-files"
+
+      - name: Terraform Apply
+        run: |
+          cd infra-as-code
+          terraform workspace select $ENV
+          terraform plan
+          terraform apply -auto-approve -input=false
+
+  build-and-push-dbt-to-ecr:
+    name: Build and Push dbt to ECR
+    runs-on: ubuntu-latest
+    needs: check-project-updates
+    if: needs.check-project-updates.outputs.dbt-project == 'true'
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: us-east-1
+      AWS_DEFAULT_OUTPUT: json
+      ENV: dev
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, Tag, and Push Image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: data-engineering-challenge-${{ env.ENV }}-images-repository
+          IMAGE_TAG: data-engineering-challenge-latest
+        run: |
+          docker build -f dbt.dockerfile -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
