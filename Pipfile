@@ -8,9 +8,6 @@ requests = "*"
 boto3 = "*"
 botocore = "*"
 urllib3 = "<2"
-pip = "*"
-install = "*"
-dbt-snowflake = "*"
 
 [dev-packages]
 
