@@ -15,7 +15,7 @@ RUN mkdir -p /root/.dbt
 COPY requirements.txt requirements.txt
 
 # Install dependencies
-RUN pip install -r requirements.txt
+RUN pip install -r requirements_dbt.txt
 
 # Copy source code
 COPY data_engineering_challenge/ .
