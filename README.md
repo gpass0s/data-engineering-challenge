@@ -15,8 +15,9 @@ Detailed information about the dataset can be found
 ### 1.1 Project Overview
 The project's cloud infrastructure is entirely coded using Terraform, located in 
 the `infra-as-code` folder. Additionally, it integrates with a dbt project under 
-the `data_engineering_challenge` folder, allowing analytics to organize their SQL scripts. 
-The project utilizes Pipenv as its Python virtualenv management tool.
+the `data_engineering_challenge` folder, allowing analytics to organize and run their 
+SQL scripts on Snowflake seamlessly. The project utilizes Pipenv as its Python 
+virtualenv management tool.
 
 ### 1.2 Solution Implemented
 Given the large size of the fire incidents dataset, handling, 
@@ -219,3 +220,10 @@ Access the dashboards and visualizations [here](link for the dashboards).
     ├── variables.default.tf
     └── vpc.settings.tf
 ```
+
+## 3. Github Actions Workflows for dbt and Terraform Deployment
+This repository employs GitHub Actions workflows to automate the deployment of both the 
+Terraform infrastructure and dbt project on AWS. The workflow, outlined in this
+YAML file, orchestrates the seamless execution of deployment processes.
+
+### 3.1 dbt project deployment workflow
