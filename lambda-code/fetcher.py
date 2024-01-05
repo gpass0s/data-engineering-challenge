@@ -23,14 +23,8 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 # Environment variables
-SNOWFLAKE_SECRET_MANAGER_NAME = os.environ["SNOWFLAKE_SECRET_MANAGER_NAME"]
 API_KEYS_SECRET_MANAGER_NAME = os.environ["API_KEYS_SECRET_MANAGER_NAME"]
 STREAM_NAME = os.environ["FIREHOSE_STREAM_NAME"]
-ECS_CLUSTER_NAME = os.environ['ECS_CLUSTER_NAME']
-ECS_TASK_DEFINITION_ARN = os.environ['ECS_TASK_DEFINITION_ARN']
-ECS_SECURITY_GROUP_ID = os.environ["ECS_SECURITY_GROUP_ID"]
-ECS_TASK_SUBNET_ID = os.environ["ECS_TASK_SUBNET_ID"]
-CONTAINER_NAME = os.environ["CONTAINER_NAME"]
 
 
 def retrieve_sensitive_data(secret_manager_name):
@@ -84,6 +78,7 @@ def fetch_coordinates_from_google_maps(st_address, zip_code, api_keys):
 
     return data['results'][0]['geometry']['location']
 
+
 def get_data_from_socrata_and_send_to_s3(api_keys):
     """
     Retrieves data from Socrata API and sends it to Amazon Kinesis Firehose.
@@ -97,9 +92,7 @@ def get_data_from_socrata_and_send_to_s3(api_keys):
     firehose_client = boto3.client('firehose')
 
     url = "https://data.sfgov.org/resource/wr8u-xric.json?"
-    offset = 0
-    google_maps_api_calls = 0
-    total_records_sent = 0
+    offset, total_records_sent = 0, 0
     while True:
         response = requests.get(
             url=f"{url}$limit=50000&$offset={offset}&$order=incident_number",
@@ -134,7 +127,6 @@ def get_data_from_socrata_and_send_to_s3(api_keys):
                     record['lng'] = coordinates['lng']
                     record['lat'] = coordinates['lat']
 
-                    google_maps_api_calls += 1
                 except KeyError as error:
                     record['lng'] = -122.3965
                     record['lat'] = 37.7937
@@ -161,59 +153,6 @@ def get_data_from_socrata_and_send_to_s3(api_keys):
 
         offset += len(records)
 
-    return google_maps_api_calls
-
-
-def spin_up_dbt_container(snowflake_credentials):
-    """
-    Spins up an ECS task to run a dbt container.
-
-    Args:
-        snowflake_credentials (dict): Snowflake credentials.
-    """
-    # Create an ECS client
-    ecs_client = boto3.client('ecs')
-
-    # Extract ecs_task_definition_name from ecs_task_definition_arn using a regular expression
-    match = re.search(r'task-definition/(.+):(\d+)', ECS_TASK_DEFINITION_ARN)
-    ecs_task_definition_name = match.group(1) + ':' + match.group(2)
-
-    logger.info("Setting container environment variables")
-
-    # Set the container overrides
-    container_overrides = [
-        {
-            'name': CONTAINER_NAME,
-            'environment': [
-                {'name': 'SNF_ACCOUNT', 'value': snowflake_credentials['account']},
-                {'name': 'SNF_USER', 'value': snowflake_credentials['user']},
-                {'name': 'SNF_ROLE', 'value': snowflake_credentials['role']},
-                {'name': 'SNF_PASSWORD', 'value': snowflake_credentials['password']},
-                {'name': 'SNF_WAREHOUSE', 'value': snowflake_credentials['warehouse']},
-                {'name': 'SNF_DATABASE', 'value': snowflake_credentials['database']},
-                {'name': 'SNF_SCHEMA', 'value': snowflake_credentials['schema']},
-                {'name': 'DBT_ENV', 'value': os.getenv('ENVIRONMENT')}
-            ]
-        },
-    ]
-
-    logger.info("Submitting task to ECS")
-
-    response = ecs_client.run_task(
-        taskDefinition=ecs_task_definition_name,
-        cluster=ECS_CLUSTER_NAME,
-        launchType='FARGATE',
-        overrides={'containerOverrides': container_overrides},
-        networkConfiguration={
-            'awsvpcConfiguration': {
-                'subnets': [ECS_TASK_SUBNET_ID],
-                'securityGroups': [ECS_SECURITY_GROUP_ID],
-                'assignPublicIp': 'ENABLED'
-            }
-        }
-    )
-    logger.info(f"Task successfully submitted to ECS. Task arn: {response['tasks'][0]['taskArn']}")
-
 
 def lambda_handler(event, context):
     """
@@ -229,17 +168,8 @@ def lambda_handler(event, context):
     try:
         # Retrieve Socrata API keys and send data to Firehose
         api_keys = retrieve_sensitive_data(API_KEYS_SECRET_MANAGER_NAME)
-        google_maps_api_calls = get_data_from_socrata_and_send_to_s3(api_keys)
+        get_data_from_socrata_and_send_to_s3(api_keys)
 
         logger.info("SF incident data successfully ingested into S3")
-        logger.info(f"Total amount of API calls to google maps: {google_maps_api_calls}")
-
-        # Sleep for 60 seconds to wait for the last KDF batch to arrive in Snowflake
-        #time.sleep(60)
-
-        # Retrieve Snowflake credentials and spin up dbt container
-        #snowflake_credentials = retrieve_sensitive_data(SNOWFLAKE_SECRET_MANAGER_NAME)
-        #spin_up_dbt_container(snowflake_credentials)
-
     except Exception as error:
         logger.error(traceback.format_exc())
