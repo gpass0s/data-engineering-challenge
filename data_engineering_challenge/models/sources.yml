@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+    - name: landing
+      description: This is a replica of the Postgres database used by our app
+      database: data_engineering_challenge
+      schema: public
+      tables:
+          - name: s3_landing_table
+            description: Snowpipe landing table.
