@@ -42,7 +42,7 @@ the Google Maps API using street addresses. The Lambda then aggregates batches o
 Firehose SDK API.
 
 ### 1.2.2 Aggregation and Dynamic Partitioning
-Firehose buffers records for 30 seconds or until 10MB chunks are reached. 
+Firehose buffers records for 60 seconds or until 64MB chunks are reached. 
 It dynamically partitions records by the files ingestion date and delivers them to S3.
 Check the image below to observe the partitioning of records in S3 facilitated by Firehose.
 <p align="center">
