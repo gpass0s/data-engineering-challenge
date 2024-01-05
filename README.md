@@ -74,7 +74,12 @@ The dbt project is automatically deployed to AWS using a CI/CD pipeline.
 Metabase, an open-source visualization tool, is chosen for 
 creating dashboards and exploring the SF fire incident data. For this challenge, 
 Metabase Cloud is used to make the analysis public with minimal maintenance. 
-Access the dashboards and visualizations [here](link for the dashboards).
+Access the dashboards and visualizations
+[here](https://passos-data-engineering.metabaseapp.com/public/dashboard/d5ac4a5b-ac3c-4728-843e-e15eca9bcb54).
+<p align="center">
+  <img src="utils/images/dashboard.png">
+  <br/>
+</p>
 
 ### 1.3 Project Tree Directory Structure
 ```css
