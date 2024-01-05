@@ -32,36 +32,36 @@ resource "aws_kinesis_firehose_delivery_stream" "S3_stream" {
     buffering_interval  = var.BUFFER_INTERVAL
     compression_format  = var.COMPRESSION_FORMAT_TYPE
 
-    processing_configuration {
-      enabled = "true"
+#    processing_configuration {
+#      enabled = "true"
+#
+#      # Multi-record deaggregation processor example
+#      processors {
+#        type = "RecordDeAggregation"
+#        parameters {
+#          parameter_name  = "SubRecordType"
+#          parameter_value = "JSON"
+#        }
+#      }
+#
+#      # New line delimiter processor example
+#      processors {
+#        type = "AppendDelimiterToRecord"
+#      }
 
-      # Multi-record deaggregation processor example
-      processors {
-        type = "RecordDeAggregation"
-        parameters {
-          parameter_name  = "SubRecordType"
-          parameter_value = "JSON"
-        }
-      }
-
-      # New line delimiter processor example
-      processors {
-        type = "AppendDelimiterToRecord"
-      }
-
-      # JQ processor example
-      processors {
-        type = "MetadataExtraction"
-        parameters {
-          parameter_name  = "JsonParsingEngine"
-          parameter_value = "JQ-1.6"
-        }
-        parameters {
-          parameter_name  = "MetadataExtractionQuery"
-          parameter_value = var.EXTRACTION_QUERY
-        }
-      }
-    }
+#      # JQ processor example
+#      processors {
+#        type = "MetadataExtraction"
+#        parameters {
+#          parameter_name  = "JsonParsingEngine"
+#          parameter_value = "JQ-1.6"
+#        }
+#        parameters {
+#          parameter_name  = "MetadataExtractionQuery"
+#          parameter_value = var.EXTRACTION_QUERY
+#        }
+#      }
+#   }
 
     dynamic_partitioning_configuration {
       enabled = var.ENABLE_DYNAMIC_PARTITIONING
