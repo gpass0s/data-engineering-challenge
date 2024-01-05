@@ -26,12 +26,12 @@ module "firehose-ingestion" {
   LOG_STREAM_NAME             = "delivery-stream"
   S3_BUCKET_ARN               = module.landing-bucket.arn
   STREAM_DESTINATION          = "extended_s3"
-  TIME_FORMAT_PREFIX          = "incidents/station_area=!{partitionKeyFromQuery:stationArea}/"
+  TIME_FORMAT_PREFIX          = "incidents/ingestion_date=!{timestamp:yyyy}-!{timestamp:MM}-!{timestamp:dd}/hour=!{timestamp:HH}/"
   ERROR_OUTPUT_PREFIX         = "firehose-errors/!{firehose:error-output-type}/dt=!{timestamp:yyyy}-!{timestamp:MM}-!{timestamp:dd}/hour=!{timestamp:HH}/"
-  BUFFER_SIZE                 = 128
+  BUFFER_SIZE                 = 64
   BUFFER_INTERVAL             = 60
-  ENABLE_DYNAMIC_PARTITIONING = true
-  EXTRACTION_QUERY            = "{stationArea:.station_area}"
+  ENABLE_DYNAMIC_PARTITIONING = false
+  EXTRACTION_QUERY            = "{incidentDate: .incident_date | split(\"T\")[0]}"
   AWS_TAGS                    = local.AWS_TAGS
 }
 
@@ -46,20 +46,45 @@ module "lambda-layer" {
   PYTHON_RUNTIME      = "python3.9"
 }
 
-module "lambda-orchestrator" {
+module "lambda-fetcher-permissions" {
+  source                             = "./modules/permissions/lambda-fetcher-service-role"
+  PROJECT_NAME                       = local.PROJECT_NAME
+  ENV                                = local.ENV
+  AWS_TAGS                           = local.AWS_TAGS
+  SECRET_MANAGERS_ARN = [
+    data.aws_secretsmanager_secret.socrata-api-key.arn,
+  ]
+  FIREHOSE_ARN = module.firehose-ingestion.arn
+}
+
+module "lambda-fetcher" {
   source          = "./modules/lambda"
   ENV             = local.ENV
   PROJECT_NAME    = local.PROJECT_NAME
   LAMBDA_LAYER    = [module.lambda-layer.arn]
-  RESOURCE_SUFFIX = "orchestrator"
+  RESOURCE_SUFFIX = "fetcher"
   LAMBDA_SETTINGS = {
     "description"        = "This fetches data from Socrata and starts a ECS task on fargate that runs dbt"
-    "handler"            = "orchestrator.lambda_handler"
+    "handler"            = "fetcher.lambda_handler"
     "runtime"            = "python3.9"
     "timeout"            = 450
     "memory_size"        = 2048
-    "lambda_script_path" = "../lambda-code/orchestrator.py"
+    "lambda_script_path" = "../lambda-code/fetcher.py"
   }
+  LAMBDA_PERMISSION_ROLE_ARN = module.lambda-fetcher-permissions.arn
+  LAMBDA_ENVIRONMENT_VARIABLES = {
+    API_KEYS_SECRET_MANAGER_NAME  = data.aws_secretsmanager_secret.socrata-api-key.id
+    FIREHOSE_STREAM_NAME          = module.firehose-ingestion.stream_name
+  }
+  CREATE_INVOKER_TRIGGER = false
+  AWS_TAGS = local.AWS_TAGS
+}
+
+module "lambda-dbt-trigger-permissions" {
+  source                             = "./modules/permissions/lambda-dbt-trigger-service-role"
+  PROJECT_NAME                       = local.PROJECT_NAME
+  ENV                                = local.ENV
+  AWS_TAGS                           = local.AWS_TAGS
   ROLES_TO_ASSUME_ARN = [
     module.ecs-task-definition.dbt-fargate-task-role-arn,
     module.ecs-task-definition.task-definition-role-arn
@@ -68,19 +93,30 @@ module "lambda-orchestrator" {
     module.ecs-task-definition.task-definition-arn
   ]
   SECRET_MANAGERS_ARN = [
-    data.aws_secretsmanager_secret.socrata-api-key.arn,
     data.aws_secretsmanager_secret.snowflake-dbt-credentials.arn
   ]
-  FIREHOSE_ARN = module.firehose-ingestion.arn
+}
 
+module "lambda-dbt-trigger" {
+  source          = "./modules/lambda"
+  ENV             = local.ENV
+  PROJECT_NAME    = local.PROJECT_NAME
+  RESOURCE_SUFFIX = "dbt-trigger"
+  LAMBDA_SETTINGS = {
+    "description"        = "This function starts a ECS task on fargate that runs dbt"
+    "handler"            = "dbt_trigger.lambda_handler"
+    "runtime"            = "python3.9"
+    "timeout"            = 60
+    "memory_size"        = 128
+    "lambda_script_path" = "../lambda-code/dbt_trigger.py"
+  }
+  LAMBDA_PERMISSION_ROLE_ARN = module.lambda-dbt-trigger-permissions.arn
   LAMBDA_ENVIRONMENT_VARIABLES = {
     ECS_CLUSTER_NAME              = module.ecs-cluster-for-dbt.cluster_name
     ECS_TASK_DEFINITION_ARN       = module.ecs-task-definition.task-definition-arn
-    ECS_TASK_SUBNET_ID            = "module.private_subnet_1a.id"
-    ECS_SECURITY_GROUP_ID         = "module.ecs-resources-security-group.id"
-    SNOWFLAKE_SECRET_MANAGER_NAME = data.aws_secretsmanager_secret.snowflake-dbt-credentials.id
-    API_KEYS_SECRET_MANAGER_NAME  = data.aws_secretsmanager_secret.socrata-api-key.id
-    FIREHOSE_STREAM_NAME          = module.firehose-ingestion.stream_name
+    ECS_TASK_SUBNET_ID            = module.private_subnet_1a.id
+    ECS_SECURITY_GROUP_ID         = module.ecs-resources-security-group.id
+    SECRET_MANAGER_NAME           = data.aws_secretsmanager_secret.snowflake-dbt-credentials.id
     CONTAINER_NAME                = module.ecs-task-definition.task-definition-container-name
     ENVIRONMENT                   = local.ENV
   }
@@ -105,6 +141,7 @@ module "lambda-orchestrator" {
   }
   AWS_TAGS = local.AWS_TAGS
 }
+
 
 module "s3-access-role-for-snowflake" {
   source                             = "./modules/permissions/s3-access-role-for-snowflake"
