@@ -302,3 +302,20 @@ credentials from AWS Secret Manager and spins up the dbt project container on EC
   <img src="utils/images/dbt_deployment_on_ECS_Fargte_architecture.png">
   <br/>
 </p>
+
+### 3.2 Networking configuration required for running dbt containers
+This section address the essential networking configurations required 
+for running dbt containers on ECS. As depicted in Figure 8, the ECS 
+task definition specifies its network mode parameter as “awsvpc”, 
+indicating that the task container must operate within a subnet and be 
+governed by a security group regulating its inbound and outbound traffic. 
+Opting for a private subnet deployment involves setting up a NAT gateway, 
+a public subnet, and an internet gateway to ensure connectivity from the 
+private subnet to the global internet. Note that communication between 
+the dbt containers and the Snowflake data warehouse account traverses 
+the global internet.
+
+<p align="center">
+  <img src="utils/images/vpc_configuration.png">
+  <br/>
+</p>
