@@ -244,6 +244,38 @@ Access the dashboards and visualizations
     ├── lambda_layer_builder.sh
     └── snowpipe_creation.sql
 ```
+## 2. Usage
+
+2.1. Clone this repository:
+```bash
+git clone git@github.com:gpass0s/data-engineering-challenge.git
+```
+2.2. Access the project's "infra-as-code" folder:
+```bash
+cd data-engineering-challenge/infra-as-code
+```
+2.3. Access the project's "infra-as-code" folder:
+```bash
+export AWS_ACCESS_KEY_ID=<your-aws-access-key-id>
+export AWS_SECRET_ACCESS_KEY=<your-aws-secret-access-key>
+export AWS_DEFAULT_REGION=<your-aws-region>
+```
+2.4. Set the Terraform:
+```bash
+terraform init --backend-config="<your-bucket>"
+```
+2.5. Set the Terraform Environment:
+```bash
+terraform workspace select $ENV || terraform workspace new $ENV
+```
+2.6. Create a Terraform plan:
+```bash
+terraform plan
+```
+2.7. Apply the terraform project on your own AWS account:
+```bash
+terraform apply -auto-approve
+```
 
 ## 3. Github Actions Workflows for dbt and Terraform Deployment
 This repository employs GitHub Actions workflows to automate the deployment of both the 
