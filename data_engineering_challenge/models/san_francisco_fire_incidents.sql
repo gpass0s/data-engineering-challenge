@@ -1,8 +1,6 @@
 {{
     config(
-        materialized='incremental',
-        unique_key='incident_number',
-        transient=false
+        materialized='table'
     )
 }}
 with san_francisco_fire_incidents as (
