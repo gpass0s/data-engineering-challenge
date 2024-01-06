@@ -12,7 +12,7 @@ RUN pip install --upgrade pip
 RUN mkdir -p /root/.dbt
 
 # Copy requirements.txt
-COPY requirements.txt requirements.txt
+COPY requirements.txt requirements_dbt.txt
 
 # Install dependencies
 RUN pip install -r requirements_dbt.txt
