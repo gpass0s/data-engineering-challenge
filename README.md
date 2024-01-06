@@ -85,12 +85,13 @@ Access the dashboards and visualizations
 ```css
 ├── data_engineering_challenge
 │   ├── analyses
-│   ├── dbt_packages
 │   ├── dbt_project.yml
-│   ├── logs
-│   │   └── dbt.log
 │   ├── macros
 │   ├── models
+│   │   ├── analytics
+│   │   │   ├── fire_incidents_per_year_battalion.sql
+│   │   │   ├── fire_incidents_per_year_district.sql
+│   │   │   └── fire_incidents_per_year.sql
 │   │   ├── san_francisco_fire_incidents.sql
 │   │   └── sources.yml
 │   ├── profiles.yml
@@ -235,10 +236,12 @@ Access the dashboards and visualizations
 ├── requirements.txt
 └── utils
     ├── images
+    │   ├── dashboard.png
     │   ├── data-engineering-challenge.png
     │   ├── dbt_deployment_on_ECS_Fargte_architecture.png
     │   ├── deployment_pipeline_snapshot.png
-    │   └── s3_bucket_snapshot.png
+    │   ├── s3_bucket_snapshot.png
+    │   └── vpc_configuration.png
     ├── lambda-deployment-packages
     │   └── lambda-layer.zip
     ├── lambda_layer_builder.sh
@@ -279,7 +282,8 @@ terraform apply -auto-approve
 
 ## 3. Github Actions Workflows for dbt and Terraform Deployment
 This repository employs GitHub Actions workflows to automate the deployment of both the 
-Terraform infrastructure and dbt project on AWS. The workflow, outlined in this
+Terraform infrastructure and dbt project on AWS. The workflow, outlined in 
+[this](https://github.com/gpass0s/data-engineering-challenge/blob/main/.github/workflows/data-engineering-challenge.yml)
 YAML file, orchestrates the seamless execution of deployment processes.
 <p align="center">
   <img src="utils/images/deployment_pipeline_snapshot.png">
